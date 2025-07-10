@@ -1,0 +1,387 @@
+// RANDOM FOREST 1988 
+function applyScaleFactors(image) {
+  var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
+  var thermalBand = image.select('ST_B6').multiply(0.00341802).add(149.0);
+  return image.addBands(opticalBands, null, true)
+              .addBands(thermalBand, null, true);
+}
+var visualization = {
+  bands: ['SR_B3', 'SR_B2', 'SR_B1'],
+  min: 0.0,
+  max: 0.3,
+};
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+//L5 1988 
+var L5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
+  .filterBounds(MaskGambia)
+  .filterDate('1988-11-01', '1988-12-31')
+  .map(applyScaleFactors);
+//-------------------------------------------------------------------------------------------
+//SELECT THE LEAST CLOUDY ONES AND BUILD A COMPOSITE WITH THEM
+var selectLeastCloudy = function(scene) {
+  var sceneImages = L5.filter(ee.Filter.eq('WRS_PATH', scene.get('WRS_PATH')))
+                                     .filter(ee.Filter.eq('WRS_ROW', scene.get('WRS_ROW')));
+  var leastCloudy = sceneImages.sort('CLOUD_COVER').first();
+  return leastCloudy;
+};
+var scenes = L5.distinct(['WRS_PATH', 'WRS_ROW']);
+var leastCloudyPerScene = scenes.map(selectLeastCloudy);
+//print ('leastCloudyPerScene 5 1988', leastCloudyPerScene);
+var leastCloudyCollection = ee.ImageCollection(leastCloudyPerScene);
+var medianComposite = leastCloudyCollection.median();
+Map.addLayer(medianComposite.clip(MaskGambia), visualization, 'L5 1988 Median Selected');
+//-------------------------------------------------------------------------------------------
+//ADDING MORE DATA 
+//NDVI 
+var ndvi = medianComposite.normalizedDifference(['SR_B4', 'SR_B3']).rename('NDVI');
+var medianCompositeNDVI = medianComposite.addBands(ndvi);
+Map.addLayer(medianCompositeNDVI.clip(MaskGambia), {bands: ['NDVI'], min: -1, max: 1, palette: ['blue', 'white', 'green']}, 'Image with NDVI');
+//print('Median Compsite + NDVI 1988',medianCompositeNDVI);
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Convert the feature collections to a geometry object.  -> The original Geometry resulted in a error that's why its converted here. 
+        var fcWater = WaterFix.geometry(); 
+        var fcDryland = DrylandFix.geometry(); 
+        var fcMudflat = MudflatFixImproved.geometry(); 
+        var fcMangrove = MangroveFix.geometry();
+        var fcWoodland = WoodlandFix.geometry();
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// More points because in 2023 we took 3750 points in total (training + validation) -> 750 per class
+//-------------------------------------------------------------------------------------------
+var polygons1test = ee.FeatureCollection(fcWater);
+var randomPoints1test = ee.FeatureCollection.randomPoints(polygons1test, 750);
+var Waterpoints = randomPoints1test.map(function(point) {
+  var polygontest = polygons1test.filterBounds(point.geometry()).first();
+  var featureWithClasstest = point.set(polygontest.toDictionary());
+  return featureWithClasstest.set('Class', ee.Number(0)); 
+});
+
+var polygons2test = ee.FeatureCollection(fcDryland);
+var randomPoints2test = ee.FeatureCollection.randomPoints(polygons2test, 750);
+var Drylandpoints = randomPoints2test.map(function(point) {
+  var polygontest = polygons2test.filterBounds(point.geometry()).first();
+  var featureWithClasstest = point.set(polygontest.toDictionary());
+  return featureWithClasstest.set('Class', ee.Number(1)); 
+});
+
+var polygons3test = ee.FeatureCollection(fcMudflat);
+var randomPoints3test = ee.FeatureCollection.randomPoints(polygons3test, 750);
+var Mudflatpoints = randomPoints3test.map(function(point) {
+  var polygontest = polygons3test.filterBounds(point.geometry()).first();
+  var featureWithClasstest = point.set(polygontest.toDictionary());
+  return featureWithClasstest.set('Class', ee.Number(2)); 
+});
+
+var polygons4test = ee.FeatureCollection(fcMangrove);
+var randomPoints4test = ee.FeatureCollection.randomPoints(polygons4test, 750);
+var Mangrovepoints = randomPoints4test.map(function(point) {
+  var polygontest = polygons4test.filterBounds(point.geometry()).first();
+  var featureWithClasstest = point.set(polygontest.toDictionary());
+  return featureWithClasstest.set('Class', ee.Number(3)); 
+});
+
+var polygons5test = ee.FeatureCollection(fcWoodland);
+var randomPoints5test = ee.FeatureCollection.randomPoints(polygons5test, 750);
+var Woodlandpoints = randomPoints5test.map(function(point) {
+  var polygontest = polygons5test.filterBounds(point.geometry()).first();
+  var featureWithClasstest = point.set(polygontest.toDictionary());
+  return featureWithClasstest.set('Class', ee.Number(4)); 
+});
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// FeatureCollection (Error)Collection.geometry: Unable to perform this geometry operation. Please specify a non-zero error margin.
+// SOLUTION: Export Asset in EE-Asset or as shape -> then import it into the script ->  .geometry -> DONE! 
+
+// FIX BROKEN COLLECTIONS (Multiple Geometry types) // 
+//var polygons = Dryland.map(function (f) {return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); }).filter(ee.Filter.equals('geometry_type', 'Polygon'));
+//var polygonsnew = ee.FeatureCollection(polygons); print(polygonsnew);
+//Map.addLayer(Dryland, {color: 'green'},'old'); Map.addLayer(polygonsnew, {color: 'black'},'new');
+
+// Convert the feature collections to a geometry object.
+        //var fcWood = WoodlandPoly.geometry();
+// Get the drawing tools.
+        //var drawingTools = Map.drawingTools();
+// Transfer the feature collection geometry to the client.
+    //fcWood.evaluate(function(geomList) {
+// Add the geometry as a layer of the drawing tools.
+ //drawingTools.addLayer([geomList], 'fcWood', 'lime');
+   //});
+//-------------------------------------------------------------------------------------
+var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
+print(trainingPoly, 'Training set Polygons');
+
+var label = 'Class';
+var bands = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7','NDVI'];
+var input = medianCompositeNDVI.select(bands);
+
+var trainImagePoly = input.sampleRegions({
+  collection: trainingPoly,
+  properties: [label],
+  scale: 30
+});
+
+var trainingDataPoly = trainImagePoly.randomColumn();
+var trainSetPoly = trainingDataPoly.filter(ee.Filter.lessThan('random', 0.8)); print('trainSetPoly',trainSetPoly);
+var testSetPoly = trainingDataPoly.filter(ee.Filter.greaterThanOrEquals('random',0.8)); print('testSetPoly',testSetPoly);
+
+// Classification Model
+var classifierPoly = ee.Classifier.smileRandomForest(100)                                  
+                  .train({
+                    features: trainSetPoly,
+                    classProperty: label,
+                    inputProperties: bands
+                  });
+print('Results of trained classifier', classifierPoly.explain());                    
+//Classify the image
+var classifiedPoly = input.select(bands).classify(classifierPoly);
+
+//Define a palette for the classification
+var landcoverPalette = ['blue','yellow','brown','green', 'lime'];
+Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0, max:4}, 'Classification Polygons');
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+//Accuracy Assessment  
+//TRAINING DATASET//
+  var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
+  var OA_training = train_accuracy.accuracy(); print('OA_training',OA_training);
+  var Kappa_training = train_accuracy.kappa(); print('Kappa_training',Kappa_training);
+  var PA_training = train_accuracy.producersAccuracy(); print('PA_training',PA_training);
+  var CA_training = train_accuracy.consumersAccuracy(); print('CA_training',CA_training);
+
+//VALIDATION DATASET// 
+  var validated = testSetPoly.classify(classifierPoly);
+  var test_accuracy = validated.errorMatrix('Class','classification');  print('Error Matrix',test_accuracy);
+  var OA_validation = test_accuracy.accuracy();                         print('OA_validation',OA_validation);
+  var Kappa_validation = test_accuracy.kappa();                       print('Kappa_validation',Kappa_validation);
+  var PA_validation = test_accuracy.producersAccuracy();              print('PA_validation',PA_validation);
+  var CA_validation = test_accuracy.consumersAccuracy();              print('CA_validation',CA_validation);
+//-------------------------------------------------------------------------------------------
+var importance = ee.Dictionary(
+  classifierPoly.explain().get('importance')
+)
+var totalImportance = importance.values().reduce(ee.Reducer.sum())
+var importancePercentage = importance.map(function (band, importance) {
+  return ee.Number(importance).divide(totalImportance).multiply(100)
+})
+
+print('importance', importance)
+print('totalImportance', totalImportance)
+print('importancePercentage', importancePercentage)
+// -----------------------------------------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------------------------------------
+// Refinement of the classification
+
+
+var mostConfusedClass = 2; // Example: Mudflat class is most misclassified
+var impreciseMask = classifiedPoly.eq(mostConfusedClass);
+
+var secondClass = 4;                                                    
+var refinedTrainingData = trainingDataPoly.filter(ee.Filter.or(
+    ee.Filter.eq('Class', mostConfusedClass),
+    ee.Filter.eq('Class', secondClass)
+));
+
+var refinedTrainSet = refinedTrainingData.randomColumn().filter(ee.Filter.lessThan('random', 0.8));
+var refinedTestSet = refinedTrainingData.randomColumn().filter(ee.Filter.greaterThanOrEquals('random', 0.8));
+
+// Train a Secondary Classifier for the Confused Class
+var refinedClassifier = ee.Classifier.smileRandomForest(100).train({features: refinedTrainSet, classProperty: 'Class', inputProperties: bands});
+
+// Apply Refined Classification to the Imprecise Class
+var refinedClassified = input.select(bands).classify(refinedClassifier);
+var finalClassification = classifiedPoly.where(classifiedPoly.eq(mostConfusedClass), refinedClassified);
+Map.addLayer(finalClassification.clip(MaskGambia), {palette: landcoverPalette, min: 0, max: 4}, 'Refined Classification');
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//  var validated_refinement = refinedTestSet.classify(refinedClassifier);
+//  var test_accuracy_ref = validated_refinement.errorMatrix('Class','classification');  print('Error Matrix_ref',test_accuracy_ref);
+//  var OA_validation_ref = test_accuracy_ref.accuracy();                         print('OA_validation_ref',OA_validation_ref);
+//  var Kappa_validation_ref = test_accuracy_ref.kappa();                       print('Kappa_validation_ref',Kappa_validation_ref);
+//  var PA_validation_ref = test_accuracy_ref.producersAccuracy();              print('PA_validation_ref',PA_validation_ref);
+//  var CA_validation_ref = test_accuracy_ref.consumersAccuracy();              print('CA_validation_ref',CA_validation_ref);
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
+// As Asset // 
+//var featuresWat = ee.FeatureCollection(WaterPoly);
+//Export.table.toAsset({
+//  collection: featuresWat,
+ // description:'1988WaterPoly',
+ // assetId: '1988WaterPoly',
+//});
+//var featuresDry = ee.FeatureCollection(DrylandPoly);
+//Export.table.toAsset({
+//  collection: featuresDry,
+ // description:'1988DrylandPoly',
+//  assetId: '1988DrylandPoly',
+//});
+var featuresMud = ee.FeatureCollection(MudflatPoly);
+Export.table.toAsset({
+  collection: featuresMud,
+  description:'1988MudflatPolyImproved',
+  assetId: '1988MudflatPolyImproved',
+});
+//var featuresMan = ee.FeatureCollection(MangrovePoly);
+//Export.table.toAsset({
+//  collection: featuresMan,
+//  description:'1988MangrovePoly',
+//  assetId: '1988MangrovePoly',
+//});
+
+// As Shape //
+Export.table.toDrive({
+  collection: testSetPoly,
+  description:'Validation Points',
+});
+
+Export.table.toDrive({
+  collection: trainSetPoly,
+  description:'Training Points',
+});
+//var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
+//Export.table.toDrive({
+//  collection: fcMerged,
+//  description:'1988MergedPoly',
+//});
+
+Export.table.toDrive({
+  collection: testSetPoly,
+  description:'testSetPoly1988',
+});
+
+Export.table.toDrive({
+  collection: trainSetPoly,
+  description:'trainSetPoly1988',
+});
+
+
+//Export.table.toDrive({
+//  collection: MudflatPoly,
+//  description:'1988MudflatPoly',
+//});
+//Export.table.toDrive({
+//  collection: WaterPoly,
+//  description:'1988WaterPoly',
+//});
+//Export.table.toDrive({
+//  collection: MangrovePoly,
+//  description:'1988MangrovePoly',
+//});
+//Export.table.toDrive({
+//  collection: WoodlandPoly,
+//  description:'1988WoodlandPoly',
+//});
+//Export.table.toDrive({
+//  collection: DrylandPoly,
+//  description:'1988DrylandPoly',
+//});
+
+// FIXING Broken Geometries
+//var polygonsMud = MudflatFix
+//    .map(function (f) { 
+ //     return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); })
+ //   .filter(ee.Filter.equals('geometry_type', 'Polygon'));
+
+//var polygonsMuddy = ee.FeatureCollection(polygonsMud);
+//Export.table.toDrive({
+//  collection: polygonsMuddy,
+//  description:'polygonsMuddy',
+//});
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// -------------------- EXPORT ---------------------            
+// CONVERT THE Crop-Boxes  
+//var Crop1 = Crop1.geometry(); 
+//var Crop2 = Crop2.geometry(); 
+//EXPORT CLASSIFIED IMAGE 
+var classified_1988_Cropped_1 = classifiedPoly.clip(Crop1).clip(MaskGambia);
+var classified_1988_Cropped_2 = classifiedPoly.clip(Crop2).clip(MaskGambia);
+
+Export.image.toDrive({
+    image: classified_1988_Cropped_1,
+    description: 'classified_1988_Cropped_1',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'classified_1988_Cropped_1',
+    scale: 30,
+    maxPixels: 1e13,
+    region:Crop1,
+    }); 
+Export.image.toDrive({
+    image: classified_1988_Cropped_2,
+    description: 'classified_1988_Cropped_2',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'classified_1988_Cropped_2',
+    scale: 30,
+    maxPixels: 1e13,
+    region:Crop2,
+    });     
+    
+//EXPORT REFINED IMAGE    
+var classified_1988_1_Improved = finalClassification.clip(Crop1).clip(MaskGambia);
+var classified_1988_2_Improved = finalClassification.clip(Crop2).clip(MaskGambia);
+
+Export.image.toDrive({
+    image: classified_1988_1_Improved,
+    description: 'classified_1988_1_Improved',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'classified_1988_1_Improved',
+    scale: 30,
+    maxPixels: 1e13,
+    region:Crop1,
+    }); 
+Export.image.toDrive({
+    image: classified_1988_2_Improved,
+    description: 'classified_1988_2_Improved',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'classified_1988_2_Improved',
+    scale: 30,
+    maxPixels: 1e13,
+    region:Crop2,
+    });         
+    
+    
+    
+    
+    
+//EXPORT COMPOSITE IMAGE
+var Composite_1988_Cropped_1 = medianCompositeNDVI.clip(Crop1).clip(MaskGambia);
+var Composite_1988_Cropped_2 = medianCompositeNDVI.clip(Crop2).clip(MaskGambia);
+
+//Export.image.toDrive({
+//    image: Composite_1988_Cropped_1.visualize(visualization),
+//    description: 'Composite_1988_Cropped_1',
+//    folder: 'GEE_Export',
+//    fileNamePrefix: 'Composite_1988_Cropped_1',
+//    scale: 30,
+//    maxPixels: 1e13,
+//    region:Crop1,
+//    }); 
+  
+//Export.image.toDrive({
+//    image: Composite_1988_Cropped_2.visualize(visualization),
+//    description: 'Composite_1988_Cropped_2',
+//    folder: 'GEE_Export',
+//    fileNamePrefix: 'Composite_1988_Cropped_2',
+//    scale: 30,
+//   maxPixels: 1e13,
+//   region:Crop2,
+//    }); 
+
+//EXPORT NDVI 
+Export.image.toDrive({
+    image: Composite_1988_Cropped_1.select(['NDVI']),
+    description: 'NDVI_1988_Cropped_1',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'NDVI_1988_Cropped_1',
+    scale: 30,
+    maxPixels: 1e13,
+    region: Crop1,
+    }); 
+
+Export.image.toDrive({
+    image: Composite_1988_Cropped_2.select(['NDVI']),
+    description: 'NDVI_1988_Cropped_2',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'NDVI_1988_Cropped_2',
+    scale: 30,
+    maxPixels: 1e13,
+    region: Crop2,
+    }); 
