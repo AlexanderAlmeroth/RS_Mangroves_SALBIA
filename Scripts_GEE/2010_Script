@@ -257,7 +257,7 @@ Export.table.toDrive({
 //});
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// -------------------- EXPORT ---------------------              --> cropped because as one the file is too big for exporting
+// -------------------- EXPORT ---------------------                                -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software
 // CONVERT THE Crop-Boxes  
 //var Crop1 = Crop1.geometry(); 
 //var Crop2 = Crop2.geometry(); 
