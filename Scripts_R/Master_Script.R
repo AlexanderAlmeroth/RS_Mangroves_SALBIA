@@ -19,7 +19,7 @@ library(raster)
 setwd("X:/XXXX/XXXX/XXX/XXXX_XXXXX")
 
 #########################################
-# Load merged rasters
+# Load merged and manually corrected rasters
 #########################################
 
 ras1988 <- rast("1988_Merge.tif") 
