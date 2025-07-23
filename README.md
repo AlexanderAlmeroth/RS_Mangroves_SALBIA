@@ -29,3 +29,6 @@ https://drive.google.com/drive/folders/1AJKkLT7k8VaogOk7zZMRpTEK_ZHvAQaF?usp=dri
 
 https://docs.google.com/spreadsheets/d/1jOBM5c0iacisUPIxDCAC1ihTlyUTgaJWez6hxlIsDS4/edit#gid=0
 
+
+
+For questions or comments please feel free to contact me via mail: alexander_almeroth@yahoo.de
