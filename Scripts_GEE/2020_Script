@@ -1,6 +1,6 @@
-// REFINEMENT
 //L8 2020
-// REFINEMENT
+// RANDOM FOREST
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 function applyScaleFactorsL8(image) {
   var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
   var thermalBands = image.select('ST_B.*').multiply(0.00341802).add(149.0);
@@ -12,13 +12,14 @@ var visualizationL8 = {
   min: 0.0,
   max: 0.3,
 };
-//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 var L8_2020 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
   .filterBounds(MaskGambia)
   .filterDate('2020-11-01', '2020-12-31')
   .map(applyScaleFactorsL8);
 
-
+//-------------------------------------------------------------------------------------------
+//SELECT THE LEAST CLOUDY ONES AND BUILD A COMPOSITE WITH THEM
 var selectLeastCloudy2020 = function(scene) {
   var sceneImages = L8_2020.filter(ee.Filter.eq('WRS_PATH', scene.get('WRS_PATH')))
                                      .filter(ee.Filter.eq('WRS_ROW', scene.get('WRS_ROW')));
@@ -82,9 +83,31 @@ var Woodlandpoints = randomPoints5.map(function(point) {
   return featureWithClass.set('Class', ee.Number(4)); 
 });
 
-//-------------------------------------------------------------------------------------
-var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// IN CASE THERE IS A ERROR MESSAGE // 
 
+// FeatureCollection (Error)Collection.geometry: Unable to perform this geometry operation. Please specify a non-zero error margin.
+// SOLUTION: Export Asset in EE-Asset or as shape -> then import it into the script ->  .geometry -> DONE! 
+
+// FIX BROKEN COLLECTIONS (Multiple Geometry types) // 
+//var polygons = Dryland.map(function (f) {return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); }).filter(ee.Filter.equals('geometry_type', 'Polygon'));
+//var polygonsnew = ee.FeatureCollection(polygons); print(polygonsnew);
+//Map.addLayer(Dryland, {color: 'green'},'old'); Map.addLayer(polygonsnew, {color: 'black'},'new');
+
+// Convert the feature collections to a geometry object.
+        //var fcWood = WoodlandPoly.geometry();
+// Get the drawing tools.
+        //var drawingTools = Map.drawingTools();
+// Transfer the feature collection geometry to the client.
+    //fcWood.evaluate(function(geomList) {
+// Add the geometry as a layer of the drawing tools.
+ //drawingTools.addLayer([geomList], 'fcWood', 'lime');
+   //});
+
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// RANDOM FOREST MODEL //
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
 print(trainingPoly,'Training set Polygons');
 
 var label = 'Class';
@@ -117,11 +140,9 @@ var classifiedPoly = input.classify(classifierPoly);
 //Define a palette for the classification
 var landcoverPalette = ['blue','yellow','brown','green','lime'];
 Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0, max:4}, 'Classification Polygons');
-
-//-------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------
-//Accuracy Assessment  
-// https://blog.gishub.org/earth-engine-tutorial-33-performing-accuracy-assessment-for-image-classification //
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+//ACCURACY ASSESSMENT 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 //TRAINING DATASET//
   var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
   var OA_training = train_accuracy.accuracy(); print('OA_training',OA_training);
@@ -137,7 +158,8 @@ Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0,
   var PA_validation = test_accuracy.producersAccuracy();  print('PA_validation',PA_validation);
   var CA_validation = test_accuracy.consumersAccuracy();  print('CA_validation',CA_validation);
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//-------------------------------------------------------------------------------------------
+// FEATURE IMPORTANCE                                                       
 var importance = ee.Dictionary(
   classifierPoly.explain().get('importance')
 )
@@ -149,95 +171,84 @@ var importancePercentage = importance.map(function (band, importance) {
 print('importance', importance)
 print('totalImportance', totalImportance)
 print('importancePercentage', importancePercentage)
-//-------------------------------------------------------------------------------------------//-----------------------------------------------------------------------------------------
 
-// Refinement of the classification
-var mostConfusedClass = 2; // Example: Mudflat class is most misclassified
-var impreciseMask = classifiedPoly.eq(mostConfusedClass);
-
-var secondClass = 4;                                                    
-var refinedTrainingData = trainingDataPoly.filter(ee.Filter.or(
-    ee.Filter.eq('Class', mostConfusedClass),
-    ee.Filter.eq('Class', secondClass)
-));
-
-var refinedTrainSet = refinedTrainingData.randomColumn().filter(ee.Filter.lessThan('random', 0.8));
-var refinedTestSet = refinedTrainingData.randomColumn().filter(ee.Filter.greaterThanOrEquals('random', 0.8));
-
-// Train a Secondary Classifier for the Confused Class
-var refinedClassifier = ee.Classifier.smileRandomForest(100).train({features: refinedTrainSet, classProperty: 'Class', inputProperties: bands});
-
-// Apply Refined Classification to the Imprecise Class
-var refinedClassified = input.select(bands).classify(refinedClassifier);
-var finalClassification = classifiedPoly.where(classifiedPoly.eq(mostConfusedClass), refinedClassified);
-Map.addLayer(finalClassification.clip(MaskGambia), {palette: landcoverPalette, min: 0, max: 4}, 'Refined Classification');
-
-
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
+// EXPORT
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
 //  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
 // As Asset // 
-//var featuresWat = ee.FeatureCollection(WaterPoly);
-//Export.table.toAsset({
-//  collection: featuresWat,
- // description:'2023WaterPoly',
- // assetId: '2023WaterPoly',
-//});
-//var featuresDry = ee.FeatureCollection(DrylandPoly);
-//Export.table.toAsset({
-//  collection: featuresDry,
- // description:'2023DrylandPoly',
-//  assetId: '2023DrylandPoly',
-//});
-//var featuresMud = ee.FeatureCollection(MudflatPoly);
-//Export.table.toAsset({
-//  collection: featuresMud,
-//  description:'2023MudflatPoly',
-//  assetId: '2023MudflatPoly',
-//});
-//var featuresMan = ee.FeatureCollection(MangrovePoly);
-//Export.table.toAsset({
-//  collection: featuresMan,
-//  description:'2023MangrovePoly',
-//  assetId: '2023MangrovePoly',
-//});
+var featuresWat = ee.FeatureCollection(WaterPoly);
+Export.table.toAsset({
+  collection: featuresWat,
+  description:'2023WaterPoly',
+  assetId: '2023WaterPoly',
+});
+
+var featuresDry = ee.FeatureCollection(DrylandPoly);
+Export.table.toAsset({
+  collection: featuresDry,
+  description:'2023DrylandPoly',
+  assetId: '2023DrylandPoly',
+});
+
+var featuresMud = ee.FeatureCollection(MudflatPoly);
+Export.table.toAsset({
+  collection: featuresMud,
+  description:'2023MudflatPoly',
+  assetId: '2023MudflatPoly',
+});
+
+var featuresMan = ee.FeatureCollection(MangrovePoly);
+Export.table.toAsset({
+  collection: featuresMan,
+  description:'2023MangrovePoly',
+  assetId: '2023MangrovePoly',
+});
 
 // As Shape // 
-//var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
-//Export.table.toDrive({
-//  collection: fcMerged,
-//  description:'2023MergedPoly',
-//});
+var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
+Export.table.toDrive({
+  collection: fcMerged,
+  description:'2023MergedPoly',
+});
 
-//Export.table.toDrive({
-//  collection: MudflatPoly,
-//  description:'2020MudflatPoly',
-//});
-//Export.table.toDrive({
-//  collection: DrylandPoly,
-//  description:'2020DrylandPoly',
-//});
-//Export.table.toDrive({
-//  collection: WaterPoly,
-//  description:'2020WaterPoly',
-//});
-//Export.table.toDrive({
-//  collection: MangrovePoly,
-//  description:'2020MangrovePoly',
-//});
-//Export.table.toDrive({
-//  collection: WoodlandPoly,
-//  description:'2020WoodlandPoly',
-//});
+Export.table.toDrive({
+  collection: MudflatPoly,
+  description:'2020MudflatPoly',
+});
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// -------------------- EXPORT ---------------------    
-//EXPORT CLASSIFIED IMAGE                                                                       -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software
+Export.table.toDrive({
+  collection: DrylandPoly,
+  description:'2020DrylandPoly',
+});
+
+Export.table.toDrive({
+  collection: WaterPoly,
+  description:'2020WaterPoly',
+});
+
+Export.table.toDrive({
+  collection: MangrovePoly,
+  description:'2020MangrovePoly',
+});
+
+Export.table.toDrive({
+  collection: WoodlandPoly,
+  description:'2020WoodlandPoly',
+});
+
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// EXPORT 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// CONVERT THE Crop-Boxes
+// -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software.           
+
+var Crop1 = Crop1.geometry(); 
+var Crop2 = Crop2.geometry(); 
+
+//EXPORT CLASSIFIED IMAGE
 var classified_2020_Cropped_1 = classifiedPoly.clip(Crop1).clip(MaskGambia);
 var classified_2020_Cropped_2 = classifiedPoly.clip(Crop2).clip(MaskGambia);
-
-//Map.addLayer(classified_2020_Cropped_1, {palette: landcoverPalette, min:0, max:4},'Crop1');
 
 Export.image.toDrive({
     image: classified_2020_Cropped_1,
@@ -248,6 +259,7 @@ Export.image.toDrive({
     maxPixels: 1e13,
     region:Crop1,
    }); 
+
 Export.image.toDrive({
     image: classified_2020_Cropped_2,
     description: 'classified_2020_Cropped_2',
@@ -258,31 +270,7 @@ Export.image.toDrive({
     region:Crop2,
     });     
 
-//EXPORT REFINED IMAGE    
-var classified_2020_1_Improved = finalClassification.clip(Crop1).clip(MaskGambia);
-var classified_2020_2_Improved = finalClassification.clip(Crop2).clip(MaskGambia);
-
-Export.image.toDrive({
-    image: classified_2020_1_Improved,
-    description: 'classified_2020_1_Improved',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'classified_2020_1_Improved',
-    scale: 30,
-    maxPixels: 1e13,
-    region:Crop1,
-    }); 
-Export.image.toDrive({
-    image: classified_2020_2_Improved,
-    description: 'classified_2020_2_Improved',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'classified_2020_2_Improved',
-    scale: 30,
-    maxPixels: 1e13,
-    region:Crop2,
-    });         
-
-
-    
+   
 //EXPORT COMPOSITE IMAGE
 var Composite_2020_Cropped_1 = medianCompositeNDVI.clip(Crop1).clip(MaskGambia);
 var Composite_2020_Cropped_2 = medianCompositeNDVI.clip(Crop2).clip(MaskGambia);
@@ -296,8 +284,7 @@ Export.image.toDrive({
     maxPixels: 1e13,
     region:Crop1,
     }); 
-    
-    
+       
 Export.image.toDrive({
     image: Composite_2020_Cropped_2.visualize(visualizationL8),
     description: 'Composite_2020_Cropped_2',
@@ -308,25 +295,4 @@ Export.image.toDrive({
     region:Crop2,
     }); 
 
-
-//EXPORT NDVI 
-Export.image.toDrive({
-    image: Composite_2020_Cropped_1.select(['NDVI']),
-    description: 'NDVI_2020_Cropped_1',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_2020_Cropped_1',
-    scale: 30,
-    maxPixels: 1e13,
-    region: Crop1,
-    }); 
-
-Export.image.toDrive({
-    image: Composite_2020_Cropped_2.select(['NDVI']),
-    description: 'NDVI_2020_Cropped_2',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_2020_Cropped_2',
-    scale: 30,
-    maxPixels: 1e13,
-    region: Crop2,
-    }); 
     
