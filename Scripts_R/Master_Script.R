@@ -33,11 +33,11 @@ ras2023 <- rast("2023_Merge.tif")
 #########################################
 
 shapefile_folder <- "X:/XXXX/XXXX/XXX/XXXX_XXXXX"
-mask_shape <- st_read(dsn = shapefile_folder, layer = "MaskGambia")
+mask_shape <- st_read(dsn = shapefile_folder, layer = "MaskGambia")  #You can find the shapefile in /Scripts_GEE/Shapes
 shapefile_projected <- st_transform(mask_shape, crs = 32628)
 
 threshold_folder <- "X:/XXXX/XXXX/XXX/XXXX_XXXXX"
-threshold_mangrove <- st_read(dsn = threshold_folder, layer = "Threshold_Mangrove_updated")
+threshold_mangrove <- st_read(dsn = threshold_folder, layer = "Threshold_Mangrove_updated") #You can find the shapefile in /Scripts_R/Shapes
 threshold_mangrove_proj <- st_transform(threshold_mangrove, crs = 32628)
 
 #########################################
