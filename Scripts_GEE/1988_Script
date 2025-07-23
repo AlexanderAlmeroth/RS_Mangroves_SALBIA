@@ -1,3 +1,4 @@
+//L5 1988 
 // RANDOM FOREST 1988 
 function applyScaleFactors(image) {
   var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
@@ -11,11 +12,11 @@ var visualization = {
   max: 0.3,
 };
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-//L5 1988 
 var L5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
   .filterBounds(MaskGambia)
   .filterDate('1988-11-01', '1988-12-31')
   .map(applyScaleFactors);
+
 //-------------------------------------------------------------------------------------------
 //SELECT THE LEAST CLOUDY ONES AND BUILD A COMPOSITE WITH THEM
 var selectLeastCloudy = function(scene) {
@@ -30,23 +31,29 @@ var leastCloudyPerScene = scenes.map(selectLeastCloudy);
 var leastCloudyCollection = ee.ImageCollection(leastCloudyPerScene);
 var medianComposite = leastCloudyCollection.median();
 Map.addLayer(medianComposite.clip(MaskGambia), visualization, 'L5 1988 Median Selected');
+
 //-------------------------------------------------------------------------------------------
 //ADDING MORE DATA 
+
 //NDVI 
 var ndvi = medianComposite.normalizedDifference(['SR_B4', 'SR_B3']).rename('NDVI');
 var medianCompositeNDVI = medianComposite.addBands(ndvi);
 Map.addLayer(medianCompositeNDVI.clip(MaskGambia), {bands: ['NDVI'], min: -1, max: 1, palette: ['blue', 'white', 'green']}, 'Image with NDVI');
-//print('Median Compsite + NDVI 1988',medianCompositeNDVI);
+print('Median Compsite + NDVI 1988',medianCompositeNDVI);
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// Convert the feature collections to a geometry object.  -> The original Geometry resulted in a error that's why its converted here. 
+ Convert the feature collections to a geometry object.  -> The original Geometry resulted in a error that's why its converted here. 
         var fcWater = WaterFix.geometry(); 
         var fcDryland = DrylandFix.geometry(); 
         var fcMudflat = MudflatFixImproved.geometry(); 
         var fcMangrove = MangroveFix.geometry();
         var fcWoodland = WoodlandFix.geometry();
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
-// More points because in 2023 we took 3750 points in total (training + validation) -> 750 per class
+// POLYGON APPROACH
 //-------------------------------------------------------------------------------------------
+// 3750 points in total 
+// 750 for validation (150 per class) and 3000 training (600 per class) (80%/20%)
+
 var polygons1test = ee.FeatureCollection(fcWater);
 var randomPoints1test = ee.FeatureCollection.randomPoints(polygons1test, 750);
 var Waterpoints = randomPoints1test.map(function(point) {
@@ -87,6 +94,8 @@ var Woodlandpoints = randomPoints5test.map(function(point) {
   return featureWithClasstest.set('Class', ee.Number(4)); 
 });
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// IN CASE THERE IS A ERROR MESSAGE // 
+
 // FeatureCollection (Error)Collection.geometry: Unable to perform this geometry operation. Please specify a non-zero error margin.
 // SOLUTION: Export Asset in EE-Asset or as shape -> then import it into the script ->  .geometry -> DONE! 
 
@@ -104,7 +113,10 @@ var Woodlandpoints = randomPoints5test.map(function(point) {
 // Add the geometry as a layer of the drawing tools.
  //drawingTools.addLayer([geomList], 'fcWood', 'lime');
    //});
-//-------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+// RANDOM FOREST MODEL //
+//-------------------------------------------------------------------------------------------
 var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
 print(trainingPoly, 'Training set Polygons');
 
@@ -129,16 +141,21 @@ var classifierPoly = ee.Classifier.smileRandomForest(100)
                     classProperty: label,
                     inputProperties: bands
                   });
-print('Results of trained classifier', classifierPoly.explain());                    
+print('Results of trained classifier', classifierPoly.explain());    
+
 //Classify the image
 var classifiedPoly = input.select(bands).classify(classifierPoly);
 
 //Define a palette for the classification
 var landcoverPalette = ['blue','yellow','brown','green', 'lime'];
 Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0, max:4}, 'Classification Polygons');
+
+
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
+//ACCURACY ASSESSMENT 
 //-------------------------------------------------------------------------------------------
-//Accuracy Assessment  
+
 //TRAINING DATASET//
   var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
   var OA_training = train_accuracy.accuracy(); print('OA_training',OA_training);
@@ -150,10 +167,12 @@ Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0,
   var validated = testSetPoly.classify(classifierPoly);
   var test_accuracy = validated.errorMatrix('Class','classification');  print('Error Matrix',test_accuracy);
   var OA_validation = test_accuracy.accuracy();                         print('OA_validation',OA_validation);
-  var Kappa_validation = test_accuracy.kappa();                       print('Kappa_validation',Kappa_validation);
-  var PA_validation = test_accuracy.producersAccuracy();              print('PA_validation',PA_validation);
-  var CA_validation = test_accuracy.consumersAccuracy();              print('CA_validation',CA_validation);
+  var Kappa_validation = test_accuracy.kappa();                         print('Kappa_validation',Kappa_validation);
+  var PA_validation = test_accuracy.producersAccuracy();                print('PA_validation',PA_validation);
+  var CA_validation = test_accuracy.consumersAccuracy();                print('CA_validation',CA_validation);
+
 //-------------------------------------------------------------------------------------------
+// FEATURE IMPORTANCE
 var importance = ee.Dictionary(
   classifierPoly.explain().get('importance')
 )
