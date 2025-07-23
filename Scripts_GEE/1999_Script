@@ -155,29 +155,8 @@ var importancePercentage = importance.map(function (band, importance) {
 print('importance', importance)
 print('totalImportance', totalImportance)
 print('importancePercentage', importancePercentage)
-//-------------------------------------------------------------------------------------------
-// Refinement of the classification
-var mostConfusedClass = 2; // Example: Mudflat class is most misclassified
-var impreciseMask = classifiedPoly.eq(mostConfusedClass);
 
-var secondClass = 4;                                                    
-var refinedTrainingData = trainingDataPoly.filter(ee.Filter.or(
-    ee.Filter.eq('Class', mostConfusedClass),
-    ee.Filter.eq('Class', secondClass)
-));
-
-var refinedTrainSet = refinedTrainingData.randomColumn().filter(ee.Filter.lessThan('random', 0.8));
-var refinedTestSet = refinedTrainingData.randomColumn().filter(ee.Filter.greaterThanOrEquals('random', 0.8));
-
-// Train a Secondary Classifier for the Confused Class
-var refinedClassifier = ee.Classifier.smileRandomForest(100).train({features: refinedTrainSet, classProperty: 'Class', inputProperties: bands});
-
-// Apply Refined Classification to the Imprecise Class
-var refinedClassified = input.select(bands).classify(refinedClassifier);
-var finalClassification = classifiedPoly.where(classifiedPoly.eq(mostConfusedClass), refinedClassified);
-Map.addLayer(finalClassification.clip(MaskGambia), {palette: landcoverPalette, min: 0, max: 4}, 'Refined Classification');
-
-//-------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // EXPORT
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
 //  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
@@ -188,29 +167,30 @@ Export.table.toAsset({
   description:'1999WaterPoly',
   assetId: '1999WaterPoly',
 });
-//var featuresDry = ee.FeatureCollection(DrylandPoly);
-//Export.table.toAsset({
-//  collection: featuresDry,
- // description:'1999DrylandPoly',
-//  assetId: '1999DrylandPoly',
-//});
-//var featuresMud = ee.FeatureCollection(MudflatPoly);
-//Export.table.toAsset({
-//  collection: featuresMud,
-//  description:'1999MudflatPoly',
-//  assetId: '1999MudflatPoly',
-//});
-//var featuresMan = ee.FeatureCollection(MangrovePoly);
-//Export.table.toAsset({
-//  collection: featuresMan,
-//  description:'1999MangrovePoly',
-//  assetId: '1999MangrovePoly',
-//});
+
+var featuresDry = ee.FeatureCollection(DrylandPoly);
+Export.table.toAsset({
+  collection: featuresDry,
+  description:'1999DrylandPoly',
+  assetId: '1999DrylandPoly',
+});
+
+var featuresMud = ee.FeatureCollection(MudflatPoly);
+Export.table.toAsset({
+  collection: featuresMud,
+  description:'1999MudflatPoly',
+  assetId: '1999MudflatPoly',
+});
+
+var featuresMan = ee.FeatureCollection(MangrovePoly);
+Export.table.toAsset({
+  collection: featuresMan,
+  description:'1999MangrovePoly',
+  assetId: '1999MangrovePoly',
+});
 
 // As Shape // 
-
-
-//var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
+var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
 Export.table.toDrive({
   collection: testSetPoly,
   description:'testSetPoly1999',
@@ -221,33 +201,38 @@ Export.table.toDrive({
   description:'trainSetPoly1999',
 });
 
-//Export.table.toDrive({
-//  collection: MudflatPoly,
-//  description:'1999MudflatPoly',
-//});
-//Export.table.toDrive({
-//  collection: WaterPoly,
-//  description:'1999WaterPoly',
-//});
-//Export.table.toDrive({
-//  collection: MangrovePoly,
-//  description:'1999MangrovePoly',
-//});
-//Export.table.toDrive({
-//  collection: WoodlandPoly,
-//  description:'1999WoodlandPoly',
-//});
-//Export.table.toDrive({
-//  collection: DrylandPoly,
-//  description:'1999DrylandPoly',
-//});
+Export.table.toDrive({
+  collection: MudflatPoly,
+  description:'1999MudflatPoly',
+});
+
+Export.table.toDrive({
+  collection: WaterPoly,
+  description:'1999WaterPoly',
+});
+
+Export.table.toDrive({
+  collection: MangrovePoly,
+  description:'1999MangrovePoly',
+});
+
+Export.table.toDrive({
+  collection: WoodlandPoly,
+  description:'1999WoodlandPoly',
+});
+
+Export.table.toDrive({
+  collection: DrylandPoly,
+  description:'1999DrylandPoly',
+});
 
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // -------------------- EXPORT ---------------------              -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software
 // CONVERT THE Crop-Boxes  
-//var Crop1 = Crop1.geometry(); 
-//var Crop2 = Crop2.geometry(); 
+var Crop1 = Crop1.geometry(); 
+var Crop2 = Crop2.geometry(); 
+
 //EXPORT CLASSIFIED IMAGE 
 var classified_1999_Cropped_1 = classifiedPoly.clip(Crop1).clip(MaskGambia);
 var classified_1999_Cropped_2 = classifiedPoly.clip(Crop2).clip(MaskGambia);
@@ -271,74 +256,30 @@ Export.image.toDrive({
     region: Crop2,
     });     
 
-
-//EXPORT REFINED IMAGE    
-var classified_1999_1_Improved = finalClassification.clip(Crop1).clip(MaskGambia);
-var classified_1999_2_Improved = finalClassification.clip(Crop2).clip(MaskGambia);
-
-Export.image.toDrive({
-    image: classified_1999_1_Improved,
-    description: 'classified_1999_1_Improved',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'classified_1999_1_Improved',
-    scale: 30,
-    maxPixels: 1e13,
-    region:Crop1,
-    }); 
-Export.image.toDrive({
-    image: classified_1999_2_Improved,
-    description: 'classified_1999_2_Improved',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'classified_1999_2_Improved',
-    scale: 30,
-    maxPixels: 1e13,
-    region:Crop2,
-    });         
-    
     
     
 //EXPORT COMPOSITE IMAGE
 var Composite_1999_Cropped_1 = medianCompositeNDVI.clip(Crop1).clip(MaskGambia);
 var Composite_1999_Cropped_2 = medianCompositeNDVI.clip(Crop2).clip(MaskGambia);
 
-//Export.image.toDrive({
-//    image: Composite_1999_Cropped_1.visualize(visualization),
-//    description: 'Composite_1999_Cropped_1',
-//    folder: 'GEE_Export',
-//    fileNamePrefix: 'Composite_1999_Cropped_1',
-//    scale: 30,
-//    maxPixels: 1e13,
-//    region: Crop1,
-//    }); 
-    
-    
-//Export.image.toDrive({
-//    image: Composite_1999_Cropped_2.visualize(visualization),
-//    description: 'Composite_1999_Cropped_2',
-//    folder: 'GEE_Export',
-//    fileNamePrefix: 'Composite_1999_Cropped_2',
-//    scale: 30,
-//   maxPixels: 1e13,
-//   region: Crop2,
-//   }); 
-
-//EXPORT NDVI 
 Export.image.toDrive({
-    image: Composite_1999_Cropped_1.select(['NDVI']),
-    description: 'NDVI_1999_Cropped_1',
+    image: Composite_1999_Cropped_1.visualize(visualization),
+    description: 'Composite_1999_Cropped_1',
     folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_1999_Cropped_1',
+    fileNamePrefix: 'Composite_1999_Cropped_1',
     scale: 30,
     maxPixels: 1e13,
     region: Crop1,
     }); 
-
+    
+    
 Export.image.toDrive({
-    image: Composite_1999_Cropped_2.select(['NDVI']),
-    description: 'NDVI_1999_Cropped_2',
+    image: Composite_1999_Cropped_2.visualize(visualization),
+    description: 'Composite_1999_Cropped_2',
     folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_1999_Cropped_2',
+    fileNamePrefix: 'Composite_1999_Cropped_2',
     scale: 30,
-    maxPixels: 1e13,
-    region: Crop2,
-    }); 
+   maxPixels: 1e13,
+   region: Crop2,
+   }); 
+
