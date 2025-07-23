@@ -1,6 +1,6 @@
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
 // L7 1999
 // RANDOM FOREST 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 function applyScaleFactors(image) {
   var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
   var thermalBand = image.select('ST_B6').multiply(0.00341802).add(149.0);
@@ -12,12 +12,13 @@ var visualization = {
   min: 0.0,
   max: 0.3,
 };
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 var L7 = ee.ImageCollection('LANDSAT/LE07/C02/T1_L2')
   .filterBounds(MaskGambia)
   .filterDate('1999-11-01', '1999-12-31')
   .map(applyScaleFactors);
-
+//-------------------------------------------------------------------------------------------
+//SELECT THE LEAST CLOUDY ONES AND BUILD A COMPOSITE WITH THEM
 var selectLeastCloudy7 = function(scene) {
   var sceneImages = L7.filter(ee.Filter.eq('WRS_PATH', scene.get('WRS_PATH')))
                                      .filter(ee.Filter.eq('WRS_ROW', scene.get('WRS_ROW')));
@@ -37,8 +38,13 @@ var ndvi = medianComposite7.normalizedDifference(['SR_B4', 'SR_B3']).rename('NDV
 var medianCompositeNDVI = medianComposite7.addBands(ndvi);
 Map.addLayer(medianCompositeNDVI.clip(MaskGambia), {bands: ['NDVI'], min: -1, max: 1, palette: ['blue', 'white', 'green']}, 'Image with NDVI');
 //print('Median Compsite + NDVI 1999',medianCompositeNDVI);
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// RANDOM FOREST POLYGON APPROACH
+
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// POLYGON APPROACH 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// 3750 points in total 
+// 750 for validation (150 per class) and 3000 training (600 per class) (80%/20%)
+
 var polygons1 = ee.FeatureCollection(WaterPoly);
 var randomPoints1 = ee.FeatureCollection.randomPoints(polygons1, 750);
 var Waterpoints = randomPoints1.map(function(point) {
@@ -80,6 +86,11 @@ var Woodlandpoints = randomPoints5.map(function(point) {
 });
 
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// IN CASE THERE IS A ERROR MESSAGE // 
+
+// FeatureCollection (Error)Collection.geometry: Unable to perform this geometry operation. Please specify a non-zero error margin.
+// SOLUTION: Export Asset in EE-Asset or as shape -> then import it into the script ->  .geometry -> DONE! 
+
 // FIX BROKEN COLLECTIONS (Multiple Geometry types) // 
 //var polygons = Dryland.map(function (f) {return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); }).filter(ee.Filter.equals('geometry_type', 'Polygon'));
 //var polygonsnew = ee.FeatureCollection(polygons); print(polygonsnew);
@@ -94,7 +105,10 @@ var Woodlandpoints = randomPoints5.map(function(point) {
 // Add the geometry as a layer of the drawing tools.
  //drawingTools.addLayer([geomList], 'fcWood', 'lime');
    //});
-//-------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// RANDOM FOREST MODEL //
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
 print(trainingPoly, 'Training set Polygons');
 
@@ -125,9 +139,9 @@ var classifiedPoly = input.classify(classifierPoly);
 //Define a palette for the classification
 var landcoverPalette = ['blue','yellow','brown','green','lime'];
 Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0, max:4}, 'Classification Polygons');
-//-------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------
-//Accuracy Assessment  
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+//ACCURACY ASSESSMENT 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 //TRAINING DATASET//
   var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
   var OA_training = train_accuracy.accuracy(); print('OA_training',OA_training);
@@ -144,6 +158,7 @@ Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0,
   var CA_validation = test_accuracy.consumersAccuracy();  print('CA_validation',CA_validation);
 
 //-------------------------------------------------------------------------------------------
+// FEATURE IMPORTANCE
 var importance = ee.Dictionary(
   classifierPoly.explain().get('importance')
 )
@@ -156,9 +171,9 @@ print('importance', importance)
 print('totalImportance', totalImportance)
 print('importancePercentage', importancePercentage)
 
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
 // EXPORT
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
 //  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
 // As Asset // 
 var featuresWat = ee.FeatureCollection(WaterPoly);
@@ -227,9 +242,12 @@ Export.table.toDrive({
 });
 
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// -------------------- EXPORT ---------------------              -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software
-// CONVERT THE Crop-Boxes  
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// EXPORT 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// CONVERT THE Crop-Boxes
+// -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software.           
+
 var Crop1 = Crop1.geometry(); 
 var Crop2 = Crop2.geometry(); 
 
@@ -246,6 +264,7 @@ Export.image.toDrive({
     maxPixels: 1e13,
     region: Crop1,
     }); 
+
 Export.image.toDrive({
     image: classified_1999_Cropped_2,
     description: 'classified_1999_Cropped_2',
@@ -256,7 +275,6 @@ Export.image.toDrive({
     region: Crop2,
     });     
 
-    
     
 //EXPORT COMPOSITE IMAGE
 var Composite_1999_Cropped_1 = medianCompositeNDVI.clip(Crop1).clip(MaskGambia);
@@ -271,7 +289,6 @@ Export.image.toDrive({
     maxPixels: 1e13,
     region: Crop1,
     }); 
-    
     
 Export.image.toDrive({
     image: Composite_1999_Cropped_2.visualize(visualization),
