@@ -17,7 +17,6 @@ var L5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
   .filterBounds(MaskGambia)
   .filterDate('1988-11-01', '1988-12-31')
   .map(applyScaleFactors);
-
 //-------------------------------------------------------------------------------------------
 //SELECT THE LEAST CLOUDY ONES AND BUILD A COMPOSITE WITH THEM
 var selectLeastCloudy = function(scene) {
@@ -32,10 +31,7 @@ var leastCloudyPerScene = scenes.map(selectLeastCloudy);
 var leastCloudyCollection = ee.ImageCollection(leastCloudyPerScene);
 var medianComposite = leastCloudyCollection.median();
 Map.addLayer(medianComposite.clip(MaskGambia), visualization, 'L5 1988 Median Selected');
-
 //-------------------------------------------------------------------------------------------
-//ADDING MORE DATA 
-
 //NDVI 
 var ndvi = medianComposite.normalizedDifference(['SR_B4', 'SR_B3']).rename('NDVI');
 var medianCompositeNDVI = medianComposite.addBands(ndvi);
@@ -154,7 +150,6 @@ Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0,
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 //ACCURACY ASSESSMENT 
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
-
 //TRAINING DATASET//
   var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
   var OA_training = train_accuracy.accuracy(); print('OA_training',OA_training);
@@ -185,8 +180,9 @@ print('totalImportance', totalImportance)
 print('importancePercentage', importancePercentage)
                                                                      
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
-// EXPORTING
+// EXPORT
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+//  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
 // As Asset // 
 var featuresWat = ee.FeatureCollection(WaterPoly);
 Export.table.toAsset({
@@ -302,6 +298,7 @@ Export.image.toDrive({
     maxPixels: 1e13,
     region:Crop1,
     }); 
+
 Export.image.toDrive({
     image: classified_1988_Cropped_2,
     description: 'classified_1988_Cropped_2',
