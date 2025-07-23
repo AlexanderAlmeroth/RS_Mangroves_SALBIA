@@ -1,5 +1,6 @@
 //L5 1988 
 // RANDOM FOREST 1988 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 function applyScaleFactors(image) {
   var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
   var thermalBand = image.select('ST_B6').multiply(0.00341802).add(149.0);
@@ -11,7 +12,7 @@ var visualization = {
   min: 0.0,
   max: 0.3,
 };
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 var L5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
   .filterBounds(MaskGambia)
   .filterDate('1988-11-01', '1988-12-31')
@@ -41,7 +42,7 @@ var medianCompositeNDVI = medianComposite.addBands(ndvi);
 Map.addLayer(medianCompositeNDVI.clip(MaskGambia), {bands: ['NDVI'], min: -1, max: 1, palette: ['blue', 'white', 'green']}, 'Image with NDVI');
 print('Median Compsite + NDVI 1988',medianCompositeNDVI);
 
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
  Convert the feature collections to a geometry object.  -> The original Geometry resulted in a error that's why its converted here. 
         var fcWater = WaterFix.geometry(); 
         var fcDryland = DrylandFix.geometry(); 
@@ -49,8 +50,8 @@ print('Median Compsite + NDVI 1988',medianCompositeNDVI);
         var fcMangrove = MangroveFix.geometry();
         var fcWoodland = WoodlandFix.geometry();
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
-// POLYGON APPROACH
-//-------------------------------------------------------------------------------------------
+// POLYGON APPROACH 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 // 3750 points in total 
 // 750 for validation (150 per class) and 3000 training (600 per class) (80%/20%)
 
@@ -113,10 +114,10 @@ var Woodlandpoints = randomPoints5test.map(function(point) {
 // Add the geometry as a layer of the drawing tools.
  //drawingTools.addLayer([geomList], 'fcWood', 'lime');
    //});
+
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------
 // RANDOM FOREST MODEL //
-//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 var trainingPoly =  Waterpoints.merge(Drylandpoints).merge(Mudflatpoints).merge(Mangrovepoints).merge(Woodlandpoints);
 print(trainingPoly, 'Training set Polygons');
 
@@ -150,11 +151,9 @@ var classifiedPoly = input.select(bands).classify(classifierPoly);
 var landcoverPalette = ['blue','yellow','brown','green', 'lime'];
 Map.addLayer(classifiedPoly.clip(MaskGambia), {palette: landcoverPalette, min:0, max:4}, 'Classification Polygons');
 
-
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------
 //ACCURACY ASSESSMENT 
-//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 
 //TRAINING DATASET//
   var train_accuracy = classifierPoly.confusionMatrix();print('Confusion Matrix', train_accuracy);
@@ -185,33 +184,37 @@ print('importance', importance)
 print('totalImportance', totalImportance)
 print('importancePercentage', importancePercentage)
                                                                      
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------                                                                     
-//  ---------------------  Exporting Training/Validation Sites  ---------------------  // 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------                                                                     
+// EXPORTING
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 // As Asset // 
-//var featuresWat = ee.FeatureCollection(WaterPoly);
-//Export.table.toAsset({
-//  collection: featuresWat,
- // description:'1988WaterPoly',
- // assetId: '1988WaterPoly',
-//});
-//var featuresDry = ee.FeatureCollection(DrylandPoly);
-//Export.table.toAsset({
-//  collection: featuresDry,
- // description:'1988DrylandPoly',
-//  assetId: '1988DrylandPoly',
-//});
+var featuresWat = ee.FeatureCollection(WaterPoly);
+Export.table.toAsset({
+  collection: featuresWat,
+  description:'1988WaterPoly',
+  assetId: '1988WaterPoly',
+});
+
+var featuresDry = ee.FeatureCollection(DrylandPoly);
+Export.table.toAsset({
+  collection: featuresDry,
+  description:'1988DrylandPoly',
+  assetId: '1988DrylandPoly',
+});
+
 var featuresMud = ee.FeatureCollection(MudflatPoly);
 Export.table.toAsset({
   collection: featuresMud,
   description:'1988MudflatPolyImproved',
   assetId: '1988MudflatPolyImproved',
 });
-//var featuresMan = ee.FeatureCollection(MangrovePoly);
-//Export.table.toAsset({
-//  collection: featuresMan,
-//  description:'1988MangrovePoly',
-//  assetId: '1988MangrovePoly',
-//});
+
+var featuresMan = ee.FeatureCollection(MangrovePoly);
+Export.table.toAsset({
+  collection: featuresMan,
+  description:'1988MangrovePoly',
+  assetId: '1988MangrovePoly',
+});
 
 // As Shape //
 Export.table.toDrive({
@@ -223,11 +226,12 @@ Export.table.toDrive({
   collection: trainSetPoly,
   description:'Training Points',
 });
-//var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
-//Export.table.toDrive({
-//  collection: fcMerged,
-//  description:'1988MergedPoly',
-//});
+
+var fcMerged = MudflatPoly.merge(MangrovePoly).merge(DrylandPoly).merge(WaterPoly);
+Export.table.toDrive({
+  collection: fcMerged,
+  description:'1988MergedPoly',
+});
 
 Export.table.toDrive({
   collection: testSetPoly,
@@ -239,45 +243,52 @@ Export.table.toDrive({
   description:'trainSetPoly1988',
 });
 
+Export.table.toDrive({
+  collection: MudflatPoly,
+  description:'1988MudflatPoly',
+});
 
-//Export.table.toDrive({
-//  collection: MudflatPoly,
-//  description:'1988MudflatPoly',
-//});
-//Export.table.toDrive({
-//  collection: WaterPoly,
-//  description:'1988WaterPoly',
-//});
-//Export.table.toDrive({
-//  collection: MangrovePoly,
-//  description:'1988MangrovePoly',
-//});
-//Export.table.toDrive({
-//  collection: WoodlandPoly,
-//  description:'1988WoodlandPoly',
-//});
-//Export.table.toDrive({
-//  collection: DrylandPoly,
-//  description:'1988DrylandPoly',
-//});
+Export.table.toDrive({
+  collection: WaterPoly,
+  description:'1988WaterPoly',
+});
+
+Export.table.toDrive({
+  collection: MangrovePoly,
+  description:'1988MangrovePoly',
+});
+
+Export.table.toDrive({
+  collection: WoodlandPoly,
+  description:'1988WoodlandPoly',
+});
+
+Export.table.toDrive({
+  collection: DrylandPoly,
+  description:'1988DrylandPoly',
+});
 
 // FIXING Broken Geometries
-//var polygonsMud = MudflatFix
-//    .map(function (f) { 
- //     return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); })
- //   .filter(ee.Filter.equals('geometry_type', 'Polygon'));
+var polygonsMud = MudflatFix
+   .map(function (f) { 
+      return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); })
+    .filter(ee.Filter.equals('geometry_type', 'Polygon'));
 
-//var polygonsMuddy = ee.FeatureCollection(polygonsMud);
-//Export.table.toDrive({
-//  collection: polygonsMuddy,
-//  description:'polygonsMuddy',
-//});
+var polygonsMuddy = ee.FeatureCollection(polygonsMud);
+Export.table.toDrive({
+  collection: polygonsMuddy,
+  description:'polygonsMuddy',
+});
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// -------------------- EXPORT ---------------------                                                       -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software.           
-// CONVERT THE Crop-Boxes  
-//var Crop1 = Crop1.geometry(); 
-//var Crop2 = Crop2.geometry(); 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// EXPORT 
+//-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
+// CONVERT THE Crop-Boxes
+// -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another software.           
+
+var Crop1 = Crop1.geometry(); 
+var Crop2 = Crop2.geometry(); 
+
 //EXPORT CLASSIFIED IMAGE 
 var classified_1988_Cropped_1 = classifiedPoly.clip(Crop1).clip(MaskGambia);
 var classified_1988_Cropped_2 = classifiedPoly.clip(Crop2).clip(MaskGambia);
@@ -306,43 +317,23 @@ Export.image.toDrive({
 var Composite_1988_Cropped_1 = medianCompositeNDVI.clip(Crop1).clip(MaskGambia);
 var Composite_1988_Cropped_2 = medianCompositeNDVI.clip(Crop2).clip(MaskGambia);
 
-//Export.image.toDrive({
-//    image: Composite_1988_Cropped_1.visualize(visualization),
-//    description: 'Composite_1988_Cropped_1',
-//    folder: 'GEE_Export',
-//    fileNamePrefix: 'Composite_1988_Cropped_1',
-//    scale: 30,
-//    maxPixels: 1e13,
-//    region:Crop1,
-//    }); 
+Export.image.toDrive({
+    image: Composite_1988_Cropped_1.visualize(visualization),
+   description: 'Composite_1988_Cropped_1',
+    folder: 'GEE_Export',
+    fileNamePrefix: 'Composite_1988_Cropped_1',
+    scale: 30,
+    maxPixels: 1e13,
+    region:Crop1,
+    }); 
   
-//Export.image.toDrive({
-//    image: Composite_1988_Cropped_2.visualize(visualization),
-//    description: 'Composite_1988_Cropped_2',
-//    folder: 'GEE_Export',
-//    fileNamePrefix: 'Composite_1988_Cropped_2',
-//    scale: 30,
-//   maxPixels: 1e13,
-//   region:Crop2,
-//    }); 
-
-//EXPORT NDVI 
 Export.image.toDrive({
-    image: Composite_1988_Cropped_1.select(['NDVI']),
-    description: 'NDVI_1988_Cropped_1',
+    image: Composite_1988_Cropped_2.visualize(visualization),
+    description: 'Composite_1988_Cropped_2',
     folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_1988_Cropped_1',
+    fileNamePrefix: 'Composite_1988_Cropped_2',
     scale: 30,
-    maxPixels: 1e13,
-    region: Crop1,
+   maxPixels: 1e13,
+   region:Crop2,
     }); 
 
-Export.image.toDrive({
-    image: Composite_1988_Cropped_2.select(['NDVI']),
-    description: 'NDVI_1988_Cropped_2',
-    folder: 'GEE_Export',
-    fileNamePrefix: 'NDVI_1988_Cropped_2',
-    scale: 30,
-    maxPixels: 1e13,
-    region: Crop2,
-    }); 
