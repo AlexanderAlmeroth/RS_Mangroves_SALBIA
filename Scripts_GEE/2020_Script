@@ -233,7 +233,7 @@ Map.addLayer(finalClassification.clip(MaskGambia), {palette: landcoverPalette, m
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // -------------------- EXPORT ---------------------    
-//EXPORT CLASSIFIED IMAGE 
+//EXPORT CLASSIFIED IMAGE                                                                       -> The file size of the TIFS is too large to be exported as one, that's why we cut them in half here and export them as "Cropped_1" and "Cropped_2". Afterwards they can be merged in another softwa
 var classified_2020_Cropped_1 = classifiedPoly.clip(Crop1).clip(MaskGambia);
 var classified_2020_Cropped_2 = classifiedPoly.clip(Crop2).clip(MaskGambia);
 
