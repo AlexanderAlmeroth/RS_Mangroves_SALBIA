@@ -4,6 +4,11 @@ These scripts are used for extracting rasters with the random forest classificat
 
 To have the scripts fully function you'll need to import all the assests per year and compare your imports to the ones that have been used. You will find all assets per year in the folder /Scripts_GEE/Imports_GEE/Shapes. (For comparing the imports you can find the screenshots of all the imports in /Scripts_GEE/Imports_GEE/XXXX_Imports.jpg)
 
+For importing assets in GEE please have a look at a tutorial here: 
+https://www.youtube.com/watch?v=_cR_ORXyo78 
+https://gis.stackexchange.com/questions/370621/uploading-shapefile-to-google-earth-engine
+
+
 
 ## Comments: 
 
