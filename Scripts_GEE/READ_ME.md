@@ -2,8 +2,7 @@
 
 These scripts are used for extracting rasters with the random forest classification algorithm. 
 
-To have the scripts fully function you'll need to import all the assests per year that have been used. You will find all assets per year in the folder /Scripts_GEE/Imports_GEE/Shapes. Be careful of renaming them correctly and transforming the tables to editable geometry objects. (For comparing the imports you can find the screenshots of all the imports in /Scripts_GEE/Imports_GEE/XXXX_Imports.jpg)
-
+To have the scripts fully function you'll need to import all the assests per year that have been used. You will find all assets per year in the folder /Scripts_GEE/Imports_GEE/Shapes. Be careful of renaming them correctly and transforming the tables to editable geometry objects. Afterwards you will need to assign the property ("Class") and Value ("0" for Water, "1" for Dryland, "2" for Mudflat, "3" for Mangrove, "4" for Woodland) For comparing the imports you can find the screenshots of all the imports in /Scripts_GEE/Imports_GEE/XXXX_Imports.jpg
 
 The Shapes Crop1Exp, Crop2Exp and MaskGambia you will need for every one of the scripts.
 
