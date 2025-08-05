@@ -1,4 +1,4 @@
-# RS_Mangroves_SALBIA
+## RS_Mangroves_SALBIA
 
 A major challenge in conservation and valuation of mangroves is the limited availability of spatial data on mangrove distribution and the absence of a standardized methodology for evaluating long term dynamics. We mapped vegetation and land cover dynamics in The Gambia (West-Africa) using LANDSAT imagery utilizing Google Earth Engine. We implemented a supervised random forest machine learning algorithm to classify The Gambia categorizing 5 time steps (1988, 1999, 2010, 2020, 2023) in 5 land cover classes: Water, Non-wooded dryland, Mudflat, Mangroves, Continental woodland). The methodology was developed during a ERASMUS-internship at the IDAEA (Instituto de Diagnóstico Ambiental y Estudios del Agua - CSIC) by Alexander Almeroth in collaboration with Julien Andrieu (University of Côte d'Azur), Chris Brown (University of Tasmania), Miguel Cañedo-Argüelles Iglesias (Spanish National Research Council), Núria Catalán (Spanish National Research Council) and Pablo Rodríguez-Lozano (Universidad Autónoma de Madrid).
 
@@ -6,7 +6,7 @@ This Gitgub is storing all scripts, files and necessary information for the remo
 
 
 
----->  Some useful websites for Google Earth Engine tutorials and script’s: 
+### ---->  Some useful websites for Google Earth Engine tutorials and script’s: 
 
 https://gee-community-catalog.org/
 
@@ -17,7 +17,7 @@ https://github.com/krishnakafle/gee-tutorials
 
 
 
----->  Literature and data sources regarding mangrove research, hydrology and remote sensing: 
+### ---->  Literature and data sources regarding mangrove research, hydrology and remote sensing: 
 
 https://drive.google.com/drive/folders/1zPoCwcnJ_n0b9tbOW-AqgdGSY0qhYWh6?usp=drive_link
 
@@ -26,7 +26,7 @@ https://docs.google.com/spreadsheets/d/1jOBM5c0iacisUPIxDCAC1ihTlyUTgaJWez6hxlIs
 
 
 
-----> Some additional datasets and tools for Land Use / Land Cover and Hydrology: 
+### ----> Some additional datasets and tools for Land Use / Land Cover and Hydrology: 
 
 https://glad.earthengine.app/view/glcluc-2000-2020#lon=-16.257291216048483;lat=13.232131669302374;zoom=10;
 
