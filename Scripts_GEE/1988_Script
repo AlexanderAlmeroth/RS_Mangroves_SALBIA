@@ -40,11 +40,11 @@ print('Median Compsite + NDVI 1988',medianCompositeNDVI);
 
 //-------------------------------------------------------------------------------------------
  Convert the feature collections to a geometry object.  -> The original Geometry resulted in a error that's why its converted here. 
-        var fcWater = WaterFix.geometry(); 
-        var fcDryland = DrylandFix.geometry(); 
-        var fcMudflat = MudflatFixImproved.geometry(); 
-        var fcMangrove = MangroveFix.geometry();
-        var fcWoodland = WoodlandFix.geometry();
+        var fcWater = WaterPoly.geometry(); 
+        var fcDryland = DrylandPoly.geometry(); 
+        var fcMudflat = MudflatPoly.geometry(); 
+        var fcMangrove = MangrovePoly.geometry();
+        var fcWoodland = WoodlandPoly.geometry();
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
 // POLYGON APPROACH 
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
@@ -239,10 +239,21 @@ Export.table.toDrive({
   description:'trainSetPoly1988',
 });
 
-Export.table.toDrive({                                 //Error: Shapefiles cannot contain multiple geometry types; found 'Polygon', 'Point'. (Error code: 3)! See down below at // FIXING Broken Geometries how to solve that error.
+Export.table.toDrive({                                //Error Message: Shapefiles cannot contain multiple geometry types; found 'Polygon', 'Point'. (Error code: 3)! See down below at // FIXING Broken Geometries how to solve that error.
   collection: MudflatPoly,
   description:'1988MudflatPoly',
 });
+                                                      // FIXING Broken Geometries
+                                                          //var polygonsMud = MudflatPoly
+                                                          //   .map(function (f) { 
+                                                          //      return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); })
+                                                          //    .filter(ee.Filter.equals('geometry_type', 'Polygon'));
+
+                                                          //var polygonsMuddy = ee.FeatureCollection(polygonsMud);
+                                                          //Export.table.toDrive({
+                                                          //  collection: polygonsMuddy,
+                                                          //  description:'polygonsMuddy',
+                                                          //});
 
 Export.table.toDrive({
   collection: WaterPoly,
@@ -262,18 +273,6 @@ Export.table.toDrive({
 Export.table.toDrive({
   collection: DrylandPoly,
   description:'1988DrylandPoly',
-});
-
-// FIXING Broken Geometries
-var polygonsMud = MudflatFix
-   .map(function (f) { 
-      return ee.Feature(f).set('geometry_type', ee.Feature(f).geometry().type()); })
-    .filter(ee.Filter.equals('geometry_type', 'Polygon'));
-
-var polygonsMuddy = ee.FeatureCollection(polygonsMud);
-Export.table.toDrive({
-  collection: polygonsMuddy,
-  description:'polygonsMuddy',
 });
 
 //-------------------------------------------------------------------------------------------//-------------------------------------------------------------------------------------------
