@@ -239,7 +239,7 @@ Export.table.toDrive({
   description:'trainSetPoly1988',
 });
 
-Export.table.toDrive({
+Export.table.toDrive({                                 //Error: Shapefiles cannot contain multiple geometry types; found 'Polygon', 'Point'. (Error code: 3)! See down below at // FIXING Broken Geometries how to solve that error.
   collection: MudflatPoly,
   description:'1988MudflatPoly',
 });
