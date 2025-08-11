@@ -69,4 +69,3 @@ https://dynamicworld.app/explore/
 
 
 
-For questions or comments please feel free to contact me via mail: alexander_almeroth@yahoo.de
