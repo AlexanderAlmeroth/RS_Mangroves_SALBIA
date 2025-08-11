@@ -20,5 +20,7 @@ Note that afterward exporting the 2 TIFS per year have been merged in QGIS resul
 
 The classification rasters and the manually corrected versions as well as the RGB composites used for the classification have been uploaded in this folder: 
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+https://doi.org/10.6084/m9.figshare.29626379.v4
+
+https://doi.org/10.6084/m9.figshare.29836934.v1
 
