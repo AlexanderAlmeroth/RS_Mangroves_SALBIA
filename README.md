@@ -8,7 +8,7 @@ This Gitgub is storing all scripts, files and necessary information for the remo
 ## Processed rasters and composites 
 Composites: https://doi.org/10.6084/m9.figshare.29836934.v1
 
-Corrected Classification: https://doi.org/10.6084/m9.figshare.29626379.v1
+Corrected Classification: https://doi.org/10.6084/m9.figshare.29626379.v4
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
